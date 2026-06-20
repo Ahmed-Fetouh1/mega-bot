@@ -1,10 +1,13 @@
-# ── FOR HUGGING FACE SPACES (and other Linux hosts) ──────────────────────────
-# tgcrypto builds fine on Linux — keep it for faster uploads/downloads.
-#
-# Install: pip install -r requirements.txt
+# ── Reference list of dependencies ────────────────────────────────────────────
+# On Hugging Face Spaces, the Dockerfile installs these directly (in a specific
+# order to avoid a tenacity version conflict — see Dockerfile comments).
+# This file is kept for reference and for non-Docker hosts where the conflict
+# doesn't apply the same way (e.g. local installs where you upgrade tenacity
+# manually afterward).
 
 pyrogram==2.0.106
 tgcrypto==1.2.5
 mega.py==1.0.8
 python-dotenv==1.0.1
 gradio==4.44.0
+tenacity==8.5.0
