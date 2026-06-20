@@ -1,0 +1,25 @@
+# ── Secrets ───────────────────────────────────────────────────────────────────
+.env
+
+# ── Pyrogram session file (generated on first run — DO NOT commit) ────────────
+*.session
+*.session-journal
+
+# ── Quota state ───────────────────────────────────────────────────────────────
+quota.json
+
+# ── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# ── Downloads (should always be empty, but just in case) ─────────────────────
+/tmp/
+downloads/
