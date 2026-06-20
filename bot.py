@@ -21,6 +21,7 @@ import logging
 import os
 import re
 import sys
+import tempfile
 from datetime import date, datetime
 from pathlib import Path
 
@@ -316,6 +317,13 @@ app = Client(
     api_id=API_ID,
     api_hash=API_HASH,
     bot_token=BOT_TOKEN,
+    # Force the session .db file into the OS temp directory, which is
+    # guaranteed writable on every host we've deployed to (local Windows
+    # venv, Hugging Face Docker container running as non-root, etc.) —
+    # avoids permission errors like "unable to open database file" if the
+    # app's working directory isn't writable by the process user.
+    # tempfile.gettempdir() resolves correctly on both Windows and Linux.
+    workdir=os.environ.get("PYROGRAM_WORKDIR", tempfile.gettempdir()),
 )
 
 
@@ -550,23 +558,43 @@ if __name__ == "__main__":
     # ── Run a minimal Gradio page on the main thread ────────────────────────
     # This satisfies Hugging Face Spaces' requirement for a listening web
     # process, and gives you a simple status page if you ever open the URL.
+    #
+    # NOTE: the gradio import and the demo.launch() call are wrapped in
+    # SEPARATE try/except blocks. This matters for debugging: if we only had
+    # one try/except ImportError around both, any OTHER error thrown by
+    # launch() (e.g. a permissions error writing Gradio's cache) would be
+    # silently mislabeled as "Gradio not installed" in the logs, hiding the
+    # real problem.
     try:
         import gradio as gr
-
-        with gr.Blocks(title="Mega Bot Status") as demo:
-            gr.Markdown(
-                "## 🤖 Mega.nz Telegram Bot — Running\n\n"
-                "This Space keeps your private Telegram bot online 24/7.\n"
-                "There is no public interface here — interact with the bot "
-                "directly in Telegram."
-            )
-
-        demo.queue().launch(
-            server_name="0.0.0.0",
-            server_port=int(os.environ.get("PORT", 7860)),
-        )
+        gradio_available = True
     except ImportError:
-        # Gradio not installed (e.g. running locally without it) —
-        # just keep the main thread alive so the bot thread keeps running.
-        log.info("Gradio not installed — running bot without web UI.")
+        gradio_available = False
+        log.warning("gradio package not installed — running bot without web UI.")
+
+    if gradio_available:
+        try:
+            with gr.Blocks(title="Mega Bot Status") as demo:
+                gr.Markdown(
+                    "## 🤖 Mega.nz Telegram Bot — Running\n\n"
+                    "This Space keeps your private Telegram bot online 24/7.\n"
+                    "There is no public interface here — interact with the bot "
+                    "directly in Telegram."
+                )
+
+            demo.queue().launch(
+                server_name="0.0.0.0",
+                server_port=int(os.environ.get("PORT", 7860)),
+            )
+        except Exception:
+            # Log the REAL error instead of silently falling through, so
+            # future failures are diagnosable from the Space's Logs tab.
+            log.exception(
+                "Gradio web UI failed to launch — bot continues running "
+                "on its background thread regardless."
+            )
+            bot_thread.join()
+    else:
+        # Gradio not installed — just keep the main thread alive so the
+        # bot thread keeps running.
         bot_thread.join()

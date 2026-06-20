@@ -39,11 +39,18 @@ RUN pip install --no-cache-dir tenacity==8.5.0
 # ── Step 3: install mega.py WITHOUT letting it downgrade tenacity ──────────
 RUN pip install --no-cache-dir --no-deps mega.py==1.0.8
 
-# ── Copy the bot code ────────────────────────────────────────────────────────
+# ── Copy the bot code AND fix ownership of the whole /app directory ─────────
+# WORKDIR creates /app as root. --chown on COPY only affects the copied
+# FILES, not the directory itself — so the non-root "user" below couldn't
+# write new files into /app (e.g. Pyrogram's session .db file) without this.
 COPY --chown=user . /app
+RUN chown -R user:user /app
 
 USER user
 ENV PATH="/home/user/.local/bin:$PATH"
+# Gradio and other libraries look for a writable home directory for caches —
+# make sure HOME is explicitly set to the user's actual home.
+ENV HOME="/home/user"
 
 # Hugging Face Spaces (Docker SDK) expects the app to listen on this port
 EXPOSE 7860
