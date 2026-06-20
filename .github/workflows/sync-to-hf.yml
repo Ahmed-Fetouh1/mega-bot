@@ -1,0 +1,23 @@
+name: Sync to Hugging Face Space
+
+# Runs automatically every time you push to "main" on GitHub.
+# Also runnable manually from the Actions tab if you ever need to force a sync.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  sync-to-hub:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - name: Push to Hugging Face Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          git push https://SpiderMan010:$HF_TOKEN@huggingface.co/spaces/SpiderMan010/mega-bot main --force
