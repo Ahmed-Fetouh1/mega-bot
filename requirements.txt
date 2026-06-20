@@ -1,11 +1,10 @@
-# Telegram MTProto client — supports files up to 2 GB
+# ── FOR HUGGING FACE SPACES (and other Linux hosts) ──────────────────────────
+# tgcrypto builds fine on Linux — keep it for faster uploads/downloads.
+#
+# Install: pip install -r requirements.txt
+
 pyrogram==2.0.106
-
-# Required C-extension for Pyrogram's crypto (much faster uploads/downloads)
 tgcrypto==1.2.5
-
-# Mega.nz download library
 mega.py==1.0.8
-
-# Load environment variables from a .env file during local development
 python-dotenv==1.0.1
+gradio==4.44.0

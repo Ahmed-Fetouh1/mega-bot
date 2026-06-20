@@ -514,7 +514,59 @@ async def _upload_progress(current: int, total: int, status_msg: Message,
 # 5.  Entry point
 # ─────────────────────────────────────────────────────────────────────────────
 
-if __name__ == "__main__":
+# ─────────────────────────────────────────────────────────────────────────────
+# 5.  Entry point
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Hugging Face Spaces expects a long-running WEB process listening on a port.
+# Our actual bot (Pyrogram) has its own internal event loop, so we run it on
+# a background thread and give Spaces a minimal Gradio page to satisfy its
+# "is this Space alive" health check. This is the platform's intended usage
+# pattern — not a workaround — Spaces are designed to host arbitrary
+# long-running Python processes behind a small web UI.
+#
+# Locally (python bot.py on your own machine) this still works identically:
+# Gradio just opens http://localhost:7860 instead.
+
+def _run_bot_blocking():
+    """Run the Pyrogram bot — this call blocks forever until the bot stops.
+
+    Runs on its own thread, so it needs its own asyncio event loop
+    (the main thread's loop is reserved for Gradio).
+    """
+    asyncio.set_event_loop(asyncio.new_event_loop())
     log.info("Starting Mega Bot — authorised user: %d", ALLOWED_USER_ID)
     log.info("Daily limit: %d | Download dir: %s", DAILY_LIMIT, DOWNLOAD_DIR)
     app.run()
+
+
+if __name__ == "__main__":
+    import threading
+
+    # ── Run the Telegram bot on a background thread ────────────────────────
+    bot_thread = threading.Thread(target=_run_bot_blocking, daemon=True)
+    bot_thread.start()
+
+    # ── Run a minimal Gradio page on the main thread ────────────────────────
+    # This satisfies Hugging Face Spaces' requirement for a listening web
+    # process, and gives you a simple status page if you ever open the URL.
+    try:
+        import gradio as gr
+
+        with gr.Blocks(title="Mega Bot Status") as demo:
+            gr.Markdown(
+                "## 🤖 Mega.nz Telegram Bot — Running\n\n"
+                "This Space keeps your private Telegram bot online 24/7.\n"
+                "There is no public interface here — interact with the bot "
+                "directly in Telegram."
+            )
+
+        demo.queue().launch(
+            server_name="0.0.0.0",
+            server_port=int(os.environ.get("PORT", 7860)),
+        )
+    except ImportError:
+        # Gradio not installed (e.g. running locally without it) —
+        # just keep the main thread alive so the bot thread keeps running.
+        log.info("Gradio not installed — running bot without web UI.")
+        bot_thread.join()
